@@ -1,0 +1,30 @@
+name: Upload Large Files to Release
+on:
+  workflow_dispatch:  # يسمح لك تشغل ال workflow يدوي
+  push:
+    tags:
+      - 'v*'  # يشتغل أوتوماتيك لما تعمل tag جديد
+
+jobs:
+  upload-to-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download large file from external source
+        run: |
+          curl -L "https://netix.dl.sourceforge.net/project/mystic-gsi-updates/OneUI/Oneui-a26x-15-A266BXXU1AYB5-AB-20250330-MysticGSI.zip?viasf=1" -o a26xA15Gsi.zip
+          
+      - name: Create Release and Upload Asset
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: |
+            a26xA15Gsi.zip
+            
