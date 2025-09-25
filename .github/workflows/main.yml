@@ -1,9 +1,9 @@
 name: Upload Large Files to Release
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   upload-to-release:
@@ -14,6 +14,7 @@ jobs:
         
       - name: Download large file
         run: |
+          # غير الرابط ده لرابط الملف الحقيقي
           curl -L "https://altushost-bul.dl.sourceforge.net/project/mystic-gsi-updates/OneUI/Oneui-a26x-15-A266BXXU1AYB5-AB-20250330-MysticGSI.zip?viasf=1" -o large-file.zip
           
       - name: Create Release
@@ -26,8 +27,9 @@ jobs:
           release_name: Release ${{ github.run_number }}
           draft: false
           prerelease: false
+          commitish: ${{ github.sha }}
           
-      - name: Upload Release Asset
+      - name: Upload Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
