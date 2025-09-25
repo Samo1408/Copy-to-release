@@ -14,7 +14,7 @@ jobs:
         
       - name: Download large file from external source
         run: |
-          curl -L "https://netix.dl.sourceforge.net/project/mystic-gsi-updates/OneUI/Oneui-a26x-15-A266BXXU1AYB5-AB-20250330-MysticGSI.zip?viasf=1" -o a26xA15Gsi.zip
+          curl -L "https://altushost-bul.dl.sourceforge.net/project/mystic-gsi-updates/OneUI/Oneui-a26x-15-A266BXXU1AYB5-AB-20250330-MysticGSI.zip?viasf=1" -o a26xA15Gsi.zip
           
       - name: Create Release and Upload Asset
         uses: actions/create-release@v1
