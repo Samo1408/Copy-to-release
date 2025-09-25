@@ -1,6 +1,9 @@
 name: Upload Large Files to Release
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -12,10 +15,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Download large file
+      - name: Download large file from external source
         run: |
-          # غير الرابط ده لرابط الملف الحقيقي
-          curl -L "https://altushost-bul.dl.sourceforge.net/project/mystic-gsi-updates/OneUI/Oneui-a26x-15-A266BXXU1AYB5-AB-20250330-MysticGSI.zip?viasf=1" -o large-file.zip
+          echo "📥 جاري تحميل الملف الثقيل..."
+          # غير هذا الرابط برابط الملف الحقيقي
+          curl -L -o large-file.zip "https://master.dl.sourceforge.net/project/mystic-gsi-updates/Generic/Oxygenos-OP5D55L1-16-1744797430944-AB-20250915-MysticGSI.zip?viasf=1"
+          echo "✅ تم التحميل بنجاح"
+          
+      - name: Check file size
+        run: |
+          FILE_SIZE=$(stat -f%z large-file.zip 2>/dev/null || stat -c%s large-file.zip 2>/dev/null || echo "0")
+          echo "📊 حجم الملف: $((FILE_SIZE / 1024 / 1024)) MB"
+          
+      - name: Split large file if needed
+        run: |
+          # التحقق من حجم الملف
+          FILE_SIZE=$(stat -f%z large-file.zip 2>/dev/null || stat -c%s large-file.zip 2>/dev/null || echo "0")
+          MAX_SIZE=2147483648  # 2GB in bytes
+          
+          if [ $FILE_SIZE -gt $MAX_SIZE ]; then
+            echo "✂️ الملف أكبر من 2GB، جاري التقسيم..."
+            # تقسيم الملف لأجزاء 1.5GB (1500MB) لكل جزء
+            split -b 1500M large-file.zip large-file-part-
+            echo "✅ تم التقسيم بنجاح"
+            ls -la large-file-part-*
+          else
+            echo "📦 حجم الملف مناسب، لا حاجة للتقسيم"
+          fi
           
       - name: Create Release
         id: create_release
@@ -24,17 +50,101 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ github.run_number }}
-          release_name: Release ${{ github.run_number }}
+          release_name: Release ${{ github.run_number }} - Large Files
           draft: false
           prerelease: false
           commitish: ${{ github.sha }}
           
-      - name: Upload Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./large-file.zip
-          asset_name: large-file.zip
-          asset_content_type: application/zip
+      - name: Upload assets based on file size
+        run: |
+          FILE_SIZE=$(stat -f%z large-file.zip 2>/dev/null || stat -c%s large-file.zip 2>/dev/null || echo "0")
+          MAX_SIZE=2147483648
+          
+          if [ $FILE_SIZE -gt $MAX_SIZE ]; then
+            echo "📤 رفع الأجزاء المقسمة..."
+            # رفع الأجزاء المقسمة
+            for part in large-file-part-*; do
+              PART_NUMBER=$(echo $part | sed 's/large-file-part-//')
+              echo "رفع الجزء: $part"
+              
+              curl -X POST \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Content-Type: application/zip" \
+                -H "Accept: application/vnd.github.v3+json" \
+                -T "$part" \
+                "${{ steps.create_release.outputs.upload_url }}?name=large-file-part-${PART_NUMBER}.zip"
+            done
+          else
+            echo "📤 رفع الملف كامل..."
+            # رفع الملف كامل إذا كان أقل من 2GB
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/zip" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -T "large-file.zip" \
+              "${{ steps.create_release.outputs.upload_url }}?name=large-file.zip"
+          fi
+          
+      - name: Create reassembly script
+        run: |
+          cat > reassemble-files.sh << 'EOF'
+          #!/bin/bash
+          # سكرپت جمع الأجزاء بعد التحميل
+          echo "🔧 سكرپت جمع الأجزاء"
+          
+          if ls large-file-part-*.zip 1> /dev/null 2>&1; then
+            echo "جمع الأجزاء..."
+            cat large-file-part-*.zip > large-file-reassembled.zip
+            echo "✅ تم جمع الملف: large-file-reassembled.zip"
+            echo "يمكنك فحص الملف باستخدام: unzip -t large-file-reassembled.zip"
+          else
+            echo "❌ لم يتم العثور على أجزاء الملف"
+          fi
+          EOF
+          
+          # رفع سكرپت الجمع
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: text/x-shellscript" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -T "reassemble-files.sh" \
+            "${{ steps.create_release.outputs.upload_url }}?name=reassemble-files.sh"
+            
+      - name: Create instructions file
+        run: |
+          cat > INSTRUCTIONS.md << 'EOF'
+          # 📚 تعليمات استخدام الملفات
+          
+          ## إذا كان الملف مقسمًا:
+          1. حمل كل الأجزاء (large-file-part-*.zip)
+          2. احفظهم في مجلد واحد
+          3. شغل السكرپت: `bash reassemble-files.sh`
+          4. أو اجمعهم يدويًا: `cat large-file-part-* > large-file.zip`
+          
+          ## إذا كان الملف كاملًا:
+          - حمل large-file.zip مباشرة
+          
+          ## للتحقق من صحة الملف:
+          ```bash
+          unzip -t large-file.zip
+          ```
+          EOF
+          
+          # رفع ملف التعليمات
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: text/markdown" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -T "INSTRUCTIONS.md" \
+            "${{ steps.create_release.outputs.upload_url }}?name=INSTRUCTIONS.md"
+            
+      - name: Cleanup
+        run: |
+          rm -f large-file.zip large-file-part-* reassemble-files.sh INSTRUCTIONS.md
+          echo "🧹 تم التنظيف"
+
+      - name: Display release info
+        run: |
+          echo "🎉 تم إنشاء ال release بنجاح!"
+          echo "📎 الرابط: https://github.com/${{ github.repository }}/releases/tag/v${{ github.run_number }}"
+          echo "💾 يمكنك الآن تحميل الملفات من صفحة Releases"
