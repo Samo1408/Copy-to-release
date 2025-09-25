@@ -18,7 +18,6 @@ jobs:
       - name: Download large file from external source
         run: |
           echo "📥 جاري تحميل الملف الثقيل..."
-          # غير هذا الرابط برابط الملف الحقيقي
           curl -L -o large-file.zip "https://netix.dl.sourceforge.net/project/mystic-gsi-updates/Generic/Foxos-BLUEFOX_NX1-15-2025_20250829-AB-20250908-MysticGSI.zip?viasf=1"
           echo "✅ تم التحميل بنجاح"
           
@@ -101,6 +100,55 @@ jobs:
             echo "للتحقق: unzip -t large-file-reassembled.zip"
           else
             echo "❌ لم يتم العثور على أجزاء الملف"
+          fi
+          EOF
+          
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: text/x-shellscript" \
+            -H "Accept: application/vnd.github.v3+json" \
+            --data-binary @reassemble-files.sh \
+            "$UPLOAD_URL?name=reassemble-files.sh"
+            
+      - name: Create and upload instructions
+        run: |
+          UPLOAD_URL=$(echo "${{ steps.create_release.outputs.upload_url }}" | sed 's/{.*}//')
+          
+          cat > INSTRUCTIONS.md << 'EOF'
+          # 📚 تعليمات استخدام الملفات
+          
+          ## إذا كان الملف مقسمًا:
+          1. حمل كل الأجزاء (large-file-part-*.zip)
+          2. احفظهم في مجلد واحد
+          3. شغل السكرپت: `bash reassemble-files.sh`
+          4. أو اجمعهم يدويًا: `cat large-file-part-* > large-file.zip`
+          
+          ## إذا كان الملف كاملًا:
+          - حمل large-file.zip مباشرة
+          
+          ## للتحقق من صحة الملف:
+          ```bash
+          unzip -t large-file.zip
+          ```
+          EOF
+          
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: text/markdown" \
+            -H "Accept: application/vnd.github.v3+json" \
+            --data-binary @INSTRUCTIONS.md \
+            "$UPLOAD_URL?name=INSTRUCTIONS.md"
+            
+      - name: Cleanup
+        run: |
+          rm -f large-file.zip large-file-part-* reassemble-files.sh INSTRUCTIONS.md
+          echo "🧹 تم التنظيف"
+
+      - name: Display release info
+        run: |
+          echo "🎉 تم إنشاء ال release بنجاح!"
+          echo "📎 الرابط: https://github.com/${{ github.repository }}/releases/tag/v${{ github.run_number }}"
+          echo "💾 يمكنك الآن تحميل الملفات من صفحة Releases"            echo "❌ لم يتم العثور على أجزاء الملف"
           fi
           EOF
           
