@@ -19,7 +19,7 @@ jobs:
         run: |
           echo "📥 جاري تحميل الملف الثقيل..."
           # غير هذا الرابط برابط الملف الحقيقي
-          curl -L -o large-file.zip "https://master.dl.sourceforge.net/project/mystic-gsi-updates/Generic/Oxygenos-OP5D55L1-16-1744797430944-AB-20250915-MysticGSI.zip?viasf=1"
+          curl -L -o large-file.zip "https://altushost-bul.dl.sourceforge.net/project/mystic-gsi-updates/Generic/Foxos-BLUEFOX_NX1-15-2025_20250829-AB-20250908-MysticGSI.zip?viasf=1"
           echo "✅ تم التحميل بنجاح"
           
       - name: Check file size
