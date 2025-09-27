@@ -18,7 +18,7 @@ jobs:
       - name: Download large file from external source
         run: |
           echo "📥 جاري تحميل الملف الثقيل..."
-          curl -L -o large-file.zip "https://netix.dl.sourceforge.net/project/mystic-gsi-updates/Generic/Foxos-BLUEFOX_NX1-15-2025_20250829-AB-20250908-MysticGSI.zip?viasf=1"
+          curl -L -o large-file.zip "https://netix.dl.sourceforge.net/project/thegsis/Evolution-X/EvolutionX-12.1_arm64-bgN-Slim-UNOFFICIAL.img.xz?viasf=1"
           echo "✅ تم التحميل بنجاح"
           
       - name: Check file size
